@@ -47,17 +47,18 @@
           <div class="body">
             
   <h1>Source code for lazyflow.utility.fileLock</h1><pre>
-Modified from code retrieved on 2013-01-01 from http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python
-Original code was released under the BSD License, as is this modified version.
+This is a modified version of code retrieved on 2013-01-01 from http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python.
+The original code was released under the BSD License, as is this modified version.
 
 Modifications in this version:
+ - Tweak docstrings for sphinx.
  - Accept an absolute path for the protected file (instead of a file name relative to cwd).
  - Allow timeout to be None.
  - Fixed a bug that caused the original code to be NON-threadsafe when the same FileLock instance was shared by multiple threads in one process.
    (The original was safe for multiple processes, but not multiple threads in a single process.  This version is safe for both cases.)
  - Added ``purge()`` function.
  - Added ``available()`` function.
- - Expand API to mimic threading.Lock interface:
+ - Expanded API to mimic ``threading.Lock interface``:
    - ``__enter__`` always calls ``acquire()``, and therefore blocks if ``acquire()`` was called previously.
    - ``__exit__`` always calls ``release()``.  It is therefore a bug to call ``release()`` from within a context manager.
    - Added ``locked()`` function. 

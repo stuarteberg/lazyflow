@@ -16,12 +16,14 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
-   
-   installation
-   overview
-   advanced
 
+   lazyflow_overview   
+   installation
+   operator_overview
+   advanced
+   request
    utilities
+   documentation_maintenance
 
 Indices and tables
 ==================

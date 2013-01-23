@@ -55,9 +55,11 @@
     <dt><a href="utilities.html#lazyflow.utility.OrderedSignal.__call__">__call__() (lazyflow.utility.OrderedSignal method)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
-    <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.__init__">__init__() (lazyflow.utility.fileLock.FileLock method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.__init__">__init__() (lazyflow.request.Request method)</a></dt>
     <dd><dl>
+      <dt><a href="request.html#lazyflow.request.threadPool.ThreadPool.__init__">(lazyflow.request.threadPool.ThreadPool method)</a></dt>
       <dt><a href="utilities.html#lazyflow.utility.PathComponents.__init__">(lazyflow.utility.PathComponents method)</a></dt>
+      <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.__init__">(lazyflow.utility.fileLock.FileLock method)</a></dt>
       <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.__init__">(lazyflow.utility.io.BlockwiseFileset method)</a></dt>
       <dt><a href="utilities.html#lazyflow.utility.io.RESTfulBlockwiseFileset.__init__">(lazyflow.utility.io.RESTfulBlockwiseFileset method)</a></dt>
       <dt><a href="utilities.html#lazyflow.utility.io.RESTfulVolume.__init__">(lazyflow.utility.io.RESTfulVolume method)</a></dt>
@@ -69,9 +71,14 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
-    <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.acquire">acquire() (lazyflow.utility.fileLock.FileLock method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestLock.acquire">acquire() (lazyflow.request.RequestLock method)</a></dt>
+    <dd><dl>
+      <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.acquire">(lazyflow.utility.fileLock.FileLock method)</a></dt>
+  </dl></dd>
+    <dt><a href="request.html#lazyflow.request.RequestPool.add">add() (lazyflow.request.RequestPool method)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.Request.assigned_worker">assigned_worker (lazyflow.request.Request attribute)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.available">available() (lazyflow.utility.fileLock.FileLock method)</a></dt>
 </dl></td>
 </tr></table>
@@ -88,6 +95,16 @@
 
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.Request.cancel">cancel() (lazyflow.request.Request method)</a></dt>
+    <dd><dl>
+      <dt><a href="request.html#lazyflow.request.RequestPool.cancel">(lazyflow.request.RequestPool method)</a></dt>
+  </dl></dd>
+    <dt><a href="request.html#lazyflow.request.Request.clean">clean() (lazyflow.request.Request method)</a></dt>
+    <dd><dl>
+      <dt><a href="request.html#lazyflow.request.RequestPool.clean">(lazyflow.request.RequestPool method)</a></dt>
+  </dl></dd>
+</dl></td>
   <td style="width: 33%" valign="top"><dl>
     <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.close">close() (lazyflow.utility.io.BlockwiseFileset method)</a></dt>
 </dl></td>
@@ -123,10 +140,11 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.threadPool.FifoQueue">FifoQueue (class in lazyflow.request.threadPool)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock">FileLock (class in lazyflow.utility.fileLock)</a></dt>
-    <dt><a href="utilities.html#lazyflow.utility.PathComponents.filename">filename (lazyflow.utility.PathComponents attribute)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="utilities.html#lazyflow.utility.PathComponents.filename">filename (lazyflow.utility.PathComponents attribute)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.PathComponents.filenameBase">filenameBase (lazyflow.utility.PathComponents attribute)</a></dt>
 </dl></td>
 </tr></table>
@@ -167,9 +185,13 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
     <dt><a href="utilities.html#module-lazyflow.utility.fileLock">lazyflow.utility.fileLock (module)</a></dt>
+    <dt><a href="request.html#lazyflow.request.threadPool.LifoQueue">LifoQueue (class in lazyflow.request.threadPool)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
-    <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.locked">locked() (lazyflow.utility.fileLock.FileLock method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestLock.locked">locked() (lazyflow.request.RequestLock method)</a></dt>
+    <dd><dl>
+      <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.locked">(lazyflow.utility.fileLock.FileLock method)</a></dt>
+  </dl></dd>
 </dl></td>
 </tr></table>
 
@@ -177,6 +199,11 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
     <dt><a href="utilities.html#lazyflow.utility.jsonConfig.Namespace">Namespace (class in lazyflow.utility.jsonConfig)</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.notify_cancelled">notify_cancelled() (lazyflow.request.Request method)</a></dt>
+</dl></td>
+  <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.Request.notify_failed">notify_failed() (lazyflow.request.Request method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.notify_finished">notify_finished() (lazyflow.request.Request method)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -192,6 +219,7 @@
   <td style="width: 33%" valign="top"><dl>
     <dt><a href="utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.parseConfigFile">parseConfigFile() (lazyflow.utility.jsonConfig.JsonConfigParser method)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.PathComponents">PathComponents (class in lazyflow.utility)</a></dt>
+    <dt><a href="request.html#lazyflow.request.threadPool.PriorityQueue">PriorityQueue (class in lazyflow.request.threadPool)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
     <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.purge">purge() (lazyflow.utility.fileLock.FileLock method)</a></dt>
@@ -211,11 +239,24 @@
       <dt><a href="utilities.html#lazyflow.utility.io.RESTfulBlockwiseFileset.readDescription">(lazyflow.utility.io.RESTfulBlockwiseFileset class method)</a></dt>
       <dt><a href="utilities.html#lazyflow.utility.io.RESTfulVolume.readDescription">(lazyflow.utility.io.RESTfulVolume class method)</a></dt>
   </dl></dd>
-    <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.release">release() (lazyflow.utility.fileLock.FileLock method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestLock.release">release() (lazyflow.request.RequestLock method)</a></dt>
+    <dd><dl>
+      <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.release">(lazyflow.utility.fileLock.FileLock method)</a></dt>
+  </dl></dd>
+    <dt><a href="request.html#lazyflow.request.Request">Request (class in lazyflow.request)</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestPool.request">request() (lazyflow.request.RequestPool method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.CancellationException">Request.CancellationException</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.CircularWaitException">Request.CircularWaitException</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.InvalidRequestException">Request.InvalidRequestException</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.Request.TimeoutException">Request.TimeoutException</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestLock">RequestLock (class in lazyflow.request)</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestPool">RequestPool (class in lazyflow.request)</a></dt>
+    <dt><a href="request.html#lazyflow.request.RequestPool.RequestPoolError">RequestPool.RequestPoolError</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.io.RESTfulBlockwiseFileset">RESTfulBlockwiseFileset (class in lazyflow.utility.io)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.io.RESTfulVolume">RESTfulVolume (class in lazyflow.utility.io)</a></dt>
+    <dt><a href="request.html#lazyflow.request.Request.result">result (lazyflow.request.Request attribute)</a></dt>
 </dl></td>
 </tr></table>
 
@@ -223,8 +264,13 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
     <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.setBlockStatus">setBlockStatus() (lazyflow.utility.io.BlockwiseFileset method)</a></dt>
+    <dt><a href="request.html#lazyflow.request.threadPool.ThreadPool.stop">stop() (lazyflow.request.threadPool.ThreadPool method)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.Request.submit">submit() (lazyflow.request.Request method)</a></dt>
+    <dd><dl>
+      <dt><a href="request.html#lazyflow.request.RequestPool.submit">(lazyflow.request.RequestPool method)</a></dt>
+  </dl></dd>
     <dt><a href="utilities.html#lazyflow.utility.OrderedSignal.subscribe">subscribe() (lazyflow.utility.OrderedSignal method)</a></dt>
 </dl></td>
 </tr></table>
@@ -232,10 +278,11 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.threadPool.ThreadPool">ThreadPool (class in lazyflow.request.threadPool)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.PathComponents.totalPath">totalPath() (lazyflow.utility.PathComponents method)</a></dt>
-    <dt><a href="utilities.html#lazyflow.utility.traceLogged">traceLogged() (in module lazyflow.utility)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="utilities.html#lazyflow.utility.traceLogged">traceLogged() (in module lazyflow.utility)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.Tracer">Tracer (class in lazyflow.utility)</a></dt>
 </dl></td>
 </tr></table>
@@ -253,10 +300,15 @@
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="request.html#lazyflow.request.Request.wait">wait() (lazyflow.request.Request method)</a></dt>
+    <dd><dl>
+      <dt><a href="request.html#lazyflow.request.RequestPool.wait">(lazyflow.request.RequestPool method)</a></dt>
+  </dl></dd>
+    <dt><a href="request.html#lazyflow.request.threadPool.ThreadPool.wake_up">wake_up() (lazyflow.request.threadPool.ThreadPool method)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.writeConfigFile">writeConfigFile() (lazyflow.utility.jsonConfig.JsonConfigParser method)</a></dt>
-    <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.writeData">writeData() (lazyflow.utility.io.BlockwiseFileset method)</a></dt>
 </dl></td>
   <td style="width: 33%" valign="top"><dl>
+    <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.writeData">writeData() (lazyflow.utility.io.BlockwiseFileset method)</a></dt>
     <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.writeDescription">writeDescription() (lazyflow.utility.io.BlockwiseFileset class method)</a></dt>
     <dd><dl>
       <dt><a href="utilities.html#lazyflow.utility.io.RESTfulBlockwiseFileset.writeDescription">(lazyflow.utility.io.RESTfulBlockwiseFileset class method)</a></dt>

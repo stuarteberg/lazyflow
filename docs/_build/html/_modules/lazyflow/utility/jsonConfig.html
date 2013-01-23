@@ -54,7 +54,7 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <div class="viewcode-block" id="Namespace"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.Namespace">[docs]</a><span class="sd">    Provides the same functionality as:</span>
 <span class="sd">    </span>
-<span class="sd">    .. code_block:: python</span>
+<span class="sd">    .. code-block:: python</span>
 <span class="sd">    </span>
 <span class="sd">        class Namespace(object):</span>
 <span class="sd">            pass</span>
@@ -192,27 +192,29 @@
 <span class="sd">    &gt;&gt;&gt; </span>
 <span class="sd">    &gt;&gt;&gt; # Write a config file to disk for this example.</span>
 <span class="sd">    &gt;&gt;&gt; example_file_str = \\</span>
-<span class="sd">    ... &#39;{\\</span>
-<span class="sd">    ...   &quot;_schema_name&quot; : &quot;example-schema&quot;,\\</span>
-<span class="sd">    ...   &quot;_schema_version&quot; : 1.0,\\</span>
-<span class="sd">    ... \\</span>
-<span class="sd">    ...   &quot;shoe_size&quot; : 12,\\</span>
-<span class="sd">    ...   &quot;color&quot; : &quot;red&quot;,\\</span>
-<span class="sd">    ...   &quot;ignored_field&quot; : &quot;Fields that are unrecognized by the schema are ignored.&quot;\\</span>
-<span class="sd">    ... }&#39;</span>
-<span class="sd">    &gt;&gt;&gt; with open(&#39;/tmp/example_config.json&#39;, &#39;w&#39;) as f:</span>
-<span class="sd">    ...   f.write(example_file_str) </span>
-<span class="sd">    &gt;&gt;&gt;</span>
-<span class="sd">    &gt;&gt;&gt; # Create a parser that understands your schema</span>
-<span class="sd">    &gt;&gt;&gt; parser = JsonConfigParser( SchemaFields )</span>
-<span class="sd">    &gt;&gt;&gt; </span>
-<span class="sd">    &gt;&gt;&gt; # Parse the config file</span>
-<span class="sd">    &gt;&gt;&gt; parsedFields = parser.parseConfigFile(&#39;/tmp/example_config.json&#39;)</span>
-<span class="sd">    &gt;&gt;&gt; print parsedFields.shoe_size</span>
-<span class="sd">    12</span>
-<span class="sd">    &gt;&gt;&gt; print parsedFields.color</span>
-<span class="sd">    red</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    ... \&quot;&quot;&quot;</span>
+    <span class="o">...</span> <span class="p">{</span>
+    <span class="o">...</span>   <span class="s">&quot;_schema_name&quot;</span> <span class="p">:</span> <span class="s">&quot;example-schema&quot;</span><span class="p">,</span>
+    <span class="o">...</span>   <span class="s">&quot;_schema_version&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="o">...</span> 
+    <span class="o">...</span>   <span class="s">&quot;shoe_size&quot;</span> <span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="o">...</span>   <span class="s">&quot;color&quot;</span> <span class="p">:</span> <span class="s">&quot;red&quot;</span><span class="p">,</span>
+    <span class="o">...</span>   <span class="s">&quot;ignored_field&quot;</span> <span class="p">:</span> <span class="s">&quot;Fields that are unrecognized by the schema are ignored.&quot;</span>
+    <span class="o">...</span> <span class="p">}</span>
+    <span class="o">...</span> \<span class="s">&quot;&quot;&quot;</span>
+<span class="s">    &gt;&gt;&gt; with open(&#39;/tmp/example_config.json&#39;, &#39;w&#39;) as f:</span>
+<span class="s">    ...   f.write(example_file_str)</span>
+<span class="s">    &gt;&gt;&gt; </span>
+<span class="s">    &gt;&gt;&gt; # Create a parser that understands your schema</span>
+<span class="s">    &gt;&gt;&gt; parser = JsonConfigParser( SchemaFields )</span>
+<span class="s">    &gt;&gt;&gt; </span>
+<span class="s">    &gt;&gt;&gt; # Parse the config file</span>
+<span class="s">    &gt;&gt;&gt; parsedFields = parser.parseConfigFile(&#39;/tmp/example_config.json&#39;)</span>
+<span class="s">    &gt;&gt;&gt; print parsedFields.shoe_size</span>
+<span class="s">    12</span>
+<span class="s">    &gt;&gt;&gt; print parsedFields.color</span>
+<span class="s">    red</span>
+<span class="s">    &quot;&quot;&quot;</span>
     <span class="k">class</span> <span class="nc">ParsingError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
         <span class="k">pass</span>
     
@@ -233,7 +235,7 @@
 
     <span class="k">def</span> <span class="nf">parseConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="JsonConfigParser.parseConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.parseConfigFile">[docs]</a><span class="sd">        Parse the JSON file at the given path into a Namespace object that provides easy access to the config contents.</span>
+<div class="viewcode-block" id="JsonConfigParser.parseConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.parseConfigFile">[docs]</a><span class="sd">        Parse the JSON file at the given path into a :py:class:`Namespace` object that provides easy access to the config contents.</span>
 <span class="sd">        Fields are converted from default JSON types into the types specified by the schema.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">configFilePath</span><span class="p">)</span> <span class="k">as</span> <span class="n">configFile</span><span class="p">:</span>
