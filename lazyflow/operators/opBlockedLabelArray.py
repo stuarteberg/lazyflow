@@ -1,9 +1,13 @@
+from functools import partial
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy
 import vigra
 import blockedarray
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators.opCache import OpCache
-from lazyflow.roi import roiFromShape, roiToSlice
+from lazyflow.roi import roiFromShape, roiToSlice, getIntersection
 
 class OpBlockedLabelArray(OpCache):
     # FIXME All slots: naming conventions
@@ -55,6 +59,7 @@ class OpBlockedLabelArray(OpCache):
             relabeling = numpy.asarray( range( self._max_label+1 ), numpy.uint8 )
             relabeling = numpy.where( relabeling == delete_label, 0, relabeling )
             relabeling = numpy.where( relabeling > delete_label, relabeling-1, relabeling )
+
             self._blocked_array.applyRelabeling( relabeling.view( vigra.VigraArray ) )
 
             # Every pixel was (potentially) touched.
@@ -80,10 +85,18 @@ class OpBlockedLabelArray(OpCache):
     
     def _executeNonzeroBlocks(self, roi, result):
         # FIXME: We ignore roi and return the entire blocklist, always
-        total_roi = roiFromShape( self.Input.meta.shape )
+        image_shape = self.Input.meta.shape
+        total_roi = roiFromShape( image_shape )
+        
+        # Get bounds of dirty blocks
         block_starts, block_stops = self._blocked_array.blocks( *total_roi )
+
+        # Clip stops to image bounds.
+        clipped_block_stops = map( partial(numpy.minimum, image_shape), block_stops )
+
+        # Convert to slices
         slicings = []
-        for start, stop in zip(block_starts, block_stops):
+        for start, stop in zip(block_starts, clipped_block_stops):
             slicings.append( roiToSlice( start, stop ) )
         result[0] = slicings
         return result
@@ -95,6 +108,7 @@ class OpBlockedLabelArray(OpCache):
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.Input
         assert value.shape == tuple(roi.stop - roi.start)
+        
         self._blocked_array.writeSubarrayNonzero( tuple(roi.start), tuple(roi.stop), value, self.eraser.value )
         min_label, max_label = self._blocked_array.minMax()
         
