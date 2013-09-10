@@ -1,10 +1,69 @@
+import logging
+logger = logging.getLogger('tests.testOpBlockedLabelArray')
+
 import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators.opBlockedLabelArray import OpBlockedLabelArray
+from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
+from lazyflow.roi import sliceToRoi
 from lazyflow.utility.slicingtools import sl, slicing2shape
+from lazyflow.utility import Timer, timeLogged
 
+class TestLabelBenchmarks(object):
+    
+    def _init_op(self, labelOpClass):
+        arrayshape = (1,1000,1000,10,1)
+        blockshape = (1,64,64,64,1)
+        
+        dummy_data = numpy.ndarray( arrayshape, dtype=numpy.uint8 )
+        dummy_data = vigra.taggedView( dummy_data, 'txyzc' )
+
+        graph = Graph()
+        op = labelOpClass(graph=graph)
+        op.Input.setValue( dummy_data )
+        op.blockShape.setValue( blockshape )
+        op.eraser.setValue( 100 )
+        op.deleteLabel.setValue( -1 )
+
+        # The old label operator has a 'shape' input
+        if 'shape' in op.inputs:
+            op.shape.setValue( arrayshape )
+        
+        assert op.Output.ready()
+        assert op.maxLabel.value == 0
+        
+        return arrayshape, op
+    
+    @timeLogged( logger, logging.INFO )
+    def _testLotsOfLabels(self, labelOpClass):
+        arrayshape, op = self._init_op( labelOpClass )
+        
+        slicing = numpy.s_[0:1, 0:1000, 0:1000, 5:6, 0:1]
+        slicing_shape = slicing2shape(slicing)
+
+        with Timer() as timer:
+            op.Input[slicing] = 1*numpy.ones( slicing_shape, dtype=numpy.uint8 )
+        logger.debug( "Creating labels took {} seconds".format( timer.seconds() ) )
+
+        with Timer() as timer:
+            op.deleteLabel.setValue( 1 )
+            op.deleteLabel.setValue( -1 )
+        logger.debug( "Deleting labels took {} seconds".format( timer.seconds() ) )
+
+        with Timer() as timer:
+            max_label = op.maxLabel.value
+        logger.debug( "Determining the max label took {} seconds".format( timer.seconds() ) )
+
+    @timeLogged( logger, logging.INFO )
+    def testLotsOfLabels_OpBlockedLabelArray(self):
+        self._testLotsOfLabels(OpBlockedLabelArray)
+    
+    @timeLogged( logger, logging.INFO )
+    def testLotsOfLabels_OpBlockedSparseLabelArray(self):
+        self._testLotsOfLabels(OpBlockedSparseLabelArray)
+        
 class TestOpBlockedSparseLabelArray1(object):
     """Basic test case."""
 
@@ -242,6 +301,9 @@ class TestOpBlockedSparseLabelArray2(object):
 
 if __name__ == "__main__":
     import sys
+    logger.addHandler( logging.StreamHandler( sys.stdout ) )
+    logger.setLevel( logging.DEBUG )
+    
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
