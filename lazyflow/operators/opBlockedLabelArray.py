@@ -107,7 +107,8 @@ class OpBlockedLabelArray(OpCache):
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.Input
-        assert value.shape == tuple(roi.stop - roi.start)
+        assert value.shape == tuple(roi.stop - roi.start), \
+            "Roi/shape mismatch: Roi is {}, value has shape {}".format( roi, value.shape )
         
         self._blocked_array.writeSubarrayNonzero( tuple(roi.start), tuple(roi.stop), value, self.eraser.value )
         min_label, max_label = self._blocked_array.minMax()
