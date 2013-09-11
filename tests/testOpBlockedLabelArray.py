@@ -13,6 +13,17 @@ from lazyflow.utility import Timer, timeLogged
 
 class TestLabelBenchmarks(object):
     
+    @classmethod
+    def setupClass(cls):
+        # Don't run any benchmarks as part of the normal test suite.
+        # Only run the benchmarks when running this file manually via 
+        # python testOpBlockedLabelArray.py
+        # (See __main__ section below to set RUN_BENCHMARKS flag.)
+        import __main__
+        if not hasattr(__main__, "RUN_BENCHMARKS") or not __main__.RUN_BENCHMARKS:
+            import nose
+            raise nose.SkipTest
+    
     def _init_op(self, labelOpClass):
         arrayshape = (1,1000,1000,10,1)
         blockshape = (1,64,64,64,1)
@@ -32,7 +43,6 @@ class TestLabelBenchmarks(object):
             op.shape.setValue( arrayshape )
         
         assert op.Output.ready()
-        assert op.maxLabel.value == 0
         
         return arrayshape, op
     
@@ -52,10 +62,6 @@ class TestLabelBenchmarks(object):
             op.deleteLabel.setValue( -1 )
         logger.debug( "Deleting labels took {} seconds".format( timer.seconds() ) )
 
-        with Timer() as timer:
-            max_label = op.maxLabel.value
-        logger.debug( "Determining the max label took {} seconds".format( timer.seconds() ) )
-
     @timeLogged( logger, logging.INFO )
     def testLotsOfLabels_OpBlockedLabelArray(self):
         self._testLotsOfLabels(OpBlockedLabelArray)
@@ -63,6 +69,9 @@ class TestLabelBenchmarks(object):
     @timeLogged( logger, logging.INFO )
     def testLotsOfLabels_OpBlockedSparseLabelArray(self):
         self._testLotsOfLabels(OpBlockedSparseLabelArray)
+
+if not hasattr(TestLabelBenchmarks, 'SKIP_BENCHMARKS'):
+    TestLabelBenchmarks.SKIP_BENCHMARKS = True
         
 class TestOpBlockedSparseLabelArray1(object):
     """Basic test case."""
@@ -82,16 +91,10 @@ class TestOpBlockedSparseLabelArray1(object):
         
         block1 = numpy.ones( (10,10,10), dtype=numpy.uint8 )
         op.Input[0:10, 0:10, 0:10] = block1
-    
-        max_label = op.maxLabel.value
-        assert max_label == 1
-    
+        
         block2 = 2*numpy.ones( (10,10,10), dtype=numpy.uint8 )
         op.Input[30:40, 0:10, 0:10] = block2
-    
-        max_label = op.maxLabel.value
-        assert max_label == 2
-        
+            
         # Check the values we wrote
         assert ( op.Output[0:10,0:10,0:10].wait() == 1 ).all()
         assert ( op.Output[30:40, 0:10, 0:10].wait() == 2 ).all()
@@ -152,9 +155,6 @@ class TestOpBlockedSparseLabelArray2(object):
         outputData = op.Output[...].wait()
         assert numpy.all(outputData[...] == data[...])
 
-        # maxLabel        
-        assert op.maxLabel.value == inData.max()
-
     def testSetupTwice(self):
         """
         If one of the inputs to the label array is changed, the output should not change (including max label value!)
@@ -182,8 +182,6 @@ class TestOpBlockedSparseLabelArray2(object):
         expectedOutput = numpy.where(expectedOutput == 2, 1, expectedOutput)
         assert (outputData[...] == expectedOutput[...]).all()
         
-        assert op.maxLabel.value == expectedOutput.max() == 1
-
         # delete label input resets automatically
         # assert op.deleteLabel.value == -1 # Apparently not?
     
@@ -196,8 +194,6 @@ class TestOpBlockedSparseLabelArray2(object):
         slicing = self.slicing
         data = self.data
 
-        assert op.maxLabel.value == 2
-        
         # Choose slicings that do NOT intersect with any of the previous data or with each other
         # The goal is to make sure that the data for each slice ends up in a separate block
         slicing1 = sl[0:1, 60:65, 0:10, 3:7, 0:1]
@@ -219,7 +215,6 @@ class TestOpBlockedSparseLabelArray2(object):
         # Does the data contain our new labels?
         assert (op.Output[...].wait() == expectedData).all()
         assert expectedData.max() == 2
-        assert op.maxLabel.value == 2
 
         # Delete label 1
         op.deleteLabel.setValue(1)
@@ -230,8 +225,6 @@ class TestOpBlockedSparseLabelArray2(object):
         expectedData = numpy.where(expectedData == 2, 1, expectedData)
         assert (outputData[...] == expectedData[...]).all()
         
-        assert op.maxLabel.value == expectedData.max() == 1
-        
     def testEraser(self):
         """
         Check that some labels can be deleted correctly from the sparse array.
@@ -240,8 +233,6 @@ class TestOpBlockedSparseLabelArray2(object):
         slicing = self.slicing
         inData = self.inData
         data = self.data
-
-        assert op.maxLabel.value == 2
         
         erasedSlicing = list(slicing)
         erasedSlicing[1] = slice(1,2)
@@ -258,7 +249,6 @@ class TestOpBlockedSparseLabelArray2(object):
         assert (outputData[...] == expectedOutput[...]).all()
         
         assert expectedOutput.max() == 2
-        assert op.maxLabel.value == 2
     
     def testEraseAll(self):
         """
@@ -268,8 +258,6 @@ class TestOpBlockedSparseLabelArray2(object):
         op = self.op
         slicing = self.slicing
         data = self.data
-
-        assert op.maxLabel.value == 2
         
         newSlicing = list(slicing)
         newSlicing[1] = slice(1,2)
@@ -284,7 +272,6 @@ class TestOpBlockedSparseLabelArray2(object):
         # Sanity check: Are the new labels in the data?
         assert (op.Output[...].wait() == expectedData).all()
         assert expectedData.max() == 3
-        assert op.maxLabel.value == 3
 
         # Now erase all the 3s
         eraserData = numpy.ones(slicing2shape(newSlicing), dtype=numpy.uint8) * 100
@@ -297,9 +284,10 @@ class TestOpBlockedSparseLabelArray2(object):
         
         # The maximum label should be reduced, because all the 3s were removed.
         assert expectedData.max() == 2
-        assert op.maxLabel.value == 2
 
 if __name__ == "__main__":
+    RUN_BENCHMARKS = True
+
     import sys
     logger.addHandler( logging.StreamHandler( sys.stdout ) )
     logger.setLevel( logging.DEBUG )

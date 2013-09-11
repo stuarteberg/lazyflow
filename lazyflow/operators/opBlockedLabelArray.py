@@ -20,13 +20,13 @@ class OpBlockedLabelArray(OpCache):
     nonzeroValues = OutputSlot()
     nonzeroCoordinates = OutputSlot()
     nonzeroBlocks = OutputSlot()
-    maxLabel = OutputSlot()
+
+    MAX_LABELS = 20
     
     def __init__(self, *args, **kwargs):
         super(OpBlockedLabelArray, self).__init__( *args, **kwargs )
         self._blocked_array = None
         self._previous_delete_label = -1
-        self._max_label = 0
 
     def setupOutputs(self):
         blockshape = self.blockShape.value
@@ -34,14 +34,10 @@ class OpBlockedLabelArray(OpCache):
         or self._blocked_array.blockShape() != blockshape:
         #or self.Input.meta.dtype != self.Output.meta.dtype:
             self._blocked_array = create_blockedarray( blockshape, self.Input.meta.dtype )
-            self._blocked_array.setMinMaxTrackingEnabled(True)
         
         # FIXME: Hard-coded as uint8 for now.
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint8
-        
-        self.maxLabel.meta.shape = (1,)
-        self.maxLabel.meta.dtype = self.Output.meta.dtype
         
         self.nonzeroBlocks.meta.shape = (1,)
         self.nonzeroBlocks.meta.dtype = object
@@ -56,7 +52,7 @@ class OpBlockedLabelArray(OpCache):
                 return
             # Deleted label is converted to 0,
             # All higher labels are shifted down by 1 to keep the labels consecutive
-            relabeling = numpy.asarray( range( self._max_label+1 ), numpy.uint8 )
+            relabeling = numpy.asarray( range( self.MAX_LABELS ), numpy.uint8 )
             relabeling = numpy.where( relabeling == delete_label, 0, relabeling )
             relabeling = numpy.where( relabeling > delete_label, relabeling-1, relabeling )
 
@@ -65,18 +61,11 @@ class OpBlockedLabelArray(OpCache):
             # Every pixel was (potentially) touched.
             self.Output.setDirty()
             
-            min_label, max_label = self._blocked_array.minMax()
-            if max_label != self._max_label:
-                self._max_label = max_label
-                self.maxLabel.setDirty()
-
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
             return self._executeOutput( roi, result )
         elif slot == self.nonzeroBlocks:
             return self._executeNonzeroBlocks( roi, result )
-        elif slot == self.maxLabel:
-            return self._executeMaxLabel( result )
         assert False, "Slot not supported: {}".format( slot.name )
     
     def _executeOutput(self, roi, result):
@@ -84,7 +73,6 @@ class OpBlockedLabelArray(OpCache):
         return result
     
     def _executeNonzeroBlocks(self, roi, result):
-        # FIXME: We ignore roi and return the entire blocklist, always
         image_shape = self.Input.meta.shape
         total_roi = roiFromShape( image_shape )
         
@@ -101,22 +89,14 @@ class OpBlockedLabelArray(OpCache):
         result[0] = slicings
         return result
 
-    def _executeMaxLabel(self, result):
-        result[0] = self._max_label
-        return result
-
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.Input
         assert value.shape == tuple(roi.stop - roi.start), \
             "Roi/shape mismatch: Roi is {}, value has shape {}".format( roi, value.shape )
         
         self._blocked_array.writeSubarrayNonzero( tuple(roi.start), tuple(roi.stop), value, self.eraser.value )
-        min_label, max_label = self._blocked_array.minMax()
         
         self.Output.setDirty( roi )
-        if max_label != self._max_label:
-            self._max_label = max_label
-            self.maxLabel.setDirty()
 
 def create_blockedarray( blockshape, dtype ):
     dimension = len(blockshape)
