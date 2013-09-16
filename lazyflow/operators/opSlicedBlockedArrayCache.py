@@ -9,6 +9,7 @@ import numpy
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opCxxBlockedArrayCache import OpCxxBlockedArrayCache
 from lazyflow.roi import sliceToRoi
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 from lazyflow.operators.opCache import OpCache
@@ -74,7 +75,9 @@ class OpSlicedBlockedArrayCache(OpCache):
             self._innerOps = []
 
             for i,innershape in enumerate(self._innerShapes):
-                op = OpBlockedArrayCache(parent=self)
+                #op = OpBlockedArrayCache(parent=self)
+                op = OpCxxBlockedArrayCache(parent=self)
+                
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
                 self._innerOps.append(op)
                 
@@ -119,6 +122,7 @@ class OpSlicedBlockedArrayCache(OpCache):
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
         self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()

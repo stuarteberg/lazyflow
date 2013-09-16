@@ -31,7 +31,7 @@ class TestOpSlicedBlockedArrayCache(object):
 
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
-        self.data = (numpy.random.random(self.dataShape) * 100).astype(int)
+        self.data = (numpy.random.random(self.dataShape) * 100).astype(numpy.uint32)
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.defaultAxistags('txyzc')
 
@@ -78,11 +78,11 @@ class TestOpSlicedBlockedArrayCache(object):
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
 
-        # Our slice intersects 5 outer block and 20 inner blocks
+        # Our slice intersects 5 outer block and 30 inner blocks
         minAccess = oldAccessCount + 10
-        maxAccess = oldAccessCount + 20
+        maxAccess = oldAccessCount + 30
         assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount <= maxAccess, "Too many accesses: {}, expected no more than {}".format( opProvider.accessCount, maxAccess )
         oldAccessCount = opProvider.accessCount
 
         # Same request should come from cache, so access count is unchanged
@@ -103,9 +103,9 @@ class TestOpSlicedBlockedArrayCache(object):
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         
-        # Our slice intersects 3*3*5=9 outerBlocks
+        # Our slice intersects 3*3*5=45 outerBlocks and 5*4*10=200 inner blocks
         minAccess = oldAccessCount + 45
-        maxAccess = oldAccessCount + 90
+        maxAccess = oldAccessCount + 200
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
@@ -280,9 +280,9 @@ class TestOpSlicedBlockedArrayCache(object):
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
 
-        # The dirty data intersected 3*3*5 outerBlocks 
+        # The dirty data intersected 3*3*5=45 outerBlocks and 5*4*10=200 inner blocks 
         minAccess = oldAccessCount + 45
-        maxAccess = oldAccessCount + 90
+        maxAccess = oldAccessCount + 200
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
