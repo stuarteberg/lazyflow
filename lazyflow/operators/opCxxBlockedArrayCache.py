@@ -27,9 +27,12 @@ class OpCxxBlockedArrayCache( OpCache ):
     Output = OutputSlot()
     
     class BlockState(object):
-        IN_PROCESS  = 0
-        DIRTY       = 1
-        CLEAN       = 2
+        # These constants must remain in this order!
+        DIRTY       = 0
+        CLEAN       = 1
+        IN_PROCESS  = 2 # Anything >= 2 means "someone is waiting for this data".
+                        # Note that states of 4,5,etc. are also valid, depending
+                        #   on how many waiting requests there are.
 
     def __init__(self, *args, **kwargs):
         super( OpCxxBlockedArrayCache, self ).__init__( *args, **kwargs )
@@ -104,15 +107,20 @@ class OpCxxBlockedArrayCache( OpCache ):
 
         with self._lock:
             states = self._block_states[roiToSlice(*state_roi)]
+            pending_block_coords = []
 
             # For blocks that are already being requested by other threads, no need to
             #  make a new request.  Just wait for the requests that are already being processed.
-            inprocess_state_indices = numpy.nonzero(states == BlockState.IN_PROCESS)
+            inprocess_state_indices = numpy.nonzero(states >= BlockState.IN_PROCESS)
             if len(inprocess_state_indices[0]) > 0:
                 # Make a list of state indices we're interested in.
                 inprocess_state_coords = self._index_tuple_to_coord_array( inprocess_state_indices )
                 inprocess_state_coords += state_roi[0] # global coords, not view coords.
-                for state_coord in map(tuple, inprocess_state_coords):
+                inprocess_state_coords = map(tuple, inprocess_state_coords)
+                pending_block_coords += inprocess_state_coords
+                
+                for state_coord in inprocess_state_coords:
+                    self._block_states[ state_coord ] += 1
                     pool.add( self._inprocess_requests[state_coord] )
 
             # Create new requests for dirty blocks
@@ -121,11 +129,13 @@ class OpCxxBlockedArrayCache( OpCache ):
                 # Make a list of state indices we're interested in.
                 dirty_state_coords = self._index_tuple_to_coord_array( dirty_state_indices )
                 dirty_state_coords += state_roi[0] # global coords, not view coords
-                for state_coord in map(tuple, dirty_state_coords):
+                dirty_state_coords = map(tuple, dirty_state_coords)
+                pending_block_coords += dirty_state_coords
+                
+                for state_coord in dirty_state_coords:
                     # Create request
                     block_roi_global = self._get_block_roi( state_coord )
                     req = self.Input( *block_roi_global )
-                    pool.add( req )
 
                     # If possible, use the pre-allocated result array as our scratch space to save memory.
                     if (block_roi_global[0] >= roi.start).all() and (block_roi_global[1] <= roi.stop).all():
@@ -134,13 +144,15 @@ class OpCxxBlockedArrayCache( OpCache ):
                         req.writeInto( result[result_slicing] )
 
                     # Save to cache when finished
-                    req.notify_finished( partial(self._handle_request_completed, weakref.ref(req), state_coord ) )
+                    req.notify_finished( partial(self._handle_request_completed, state_coord ) )
 
                     # Bookkeeping
                     self._block_states[ state_coord ] = BlockState.IN_PROCESS
                     self._inprocess_requests[ state_coord ] = req
+                    pool.add( req )
         
         # Wait for all requests (including new and previously in-process).
+        # Important: We do not own the lock while we wait.
         pool.wait()
 
         # Now the cache is up-to-date.  Simply ask it for all the data we need.
@@ -150,23 +162,29 @@ class OpCxxBlockedArrayCache( OpCache ):
             # (For now, that's more trouble than its worth -- it may even hurt performance.)
             self._blockedarray.readSubarray( roi.start, roi.stop, result )
 
+            # Decrement the bookkeeping state for all requests we waited for.
+            # A block is not considered "clean" until its data has been transferred to all requests that wanted it.
+            for block_state_coord in pending_block_coords:
+                assert self._block_states[ block_state_coord ] >= OpCxxBlockedArrayCache.BlockState.IN_PROCESS
+                self._block_states[ block_state_coord ] -= 1
+                if self._block_states[ block_state_coord ] == OpCxxBlockedArrayCache.BlockState.CLEAN:
+                    # No one is waiting for this request data anymore, so it's safe to be removed from the 'in process' list.
+                    # (This list determines which blocks can safely be discarded by the memory management thread.)
+                    del self._inprocess_requests[block_state_coord]
+
         return result
 
-    def _handle_request_completed(self, weak_request, block_state_coord, data ):
+    def _handle_request_completed(self, block_state_coord, data ):
         block_roi = self._get_block_roi( block_state_coord )
         with self._lock:
             # Write result into cache
             self._blockedarray.writeSubarray( block_roi[0], block_roi[1], data )
 
-            # Update bookkeeping members
-            del self._inprocess_requests[block_state_coord]
-            self._block_states[ block_state_coord ] = OpCxxBlockedArrayCache.BlockState.CLEAN
-            
             # Memory optimization: Immediately free this request's data
-            weak_request().clean()
+            req = self._inprocess_requests[block_state_coord]
+            req.clean()
             del data
-
-
+    
     def propagateDirty(self, slot, subindex, roi):
         fixed = self.fixAtCurrent.value
         if slot == self.Input:
