@@ -1,5 +1,6 @@
-import weakref
+import time
 import threading
+import collections
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
@@ -7,10 +8,13 @@ logger = logging.getLogger(__name__)
 import numpy
 import blockedarray
 
+from lazyflow.utility import Timer
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.request import RequestPool
 from lazyflow.operators.opCache import OpCache
 from lazyflow.roi import TinyVector, roiFromShape, roiToSlice, getIntersectingBlocks, getBlockBounds
+
+from arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 class OpCxxBlockedArrayCache( OpCache ):
     """
@@ -41,6 +45,9 @@ class OpCxxBlockedArrayCache( OpCache ):
         self._dirty_blocks = None
         self._lock = threading.Lock() # Regular lock: Must never call wait() while this is held!
         self._block_shape = None
+        self._access_times = None
+        
+        ArrayCacheMemoryMgr.instance.add(self)
     
     def setupOutputs(self):
         assert not numpy.issubdtype(object, self.Input.meta.dtype), \
@@ -51,11 +58,20 @@ class OpCxxBlockedArrayCache( OpCache ):
         or self._block_shape != block_shape \
         or self.Input.meta.dtype != self.Output.meta.dtype:
             self._block_shape = block_shape
+            self._block_size_bytes = numpy.prod(block_shape) * self._getDtypeBytes(self.Input.meta.dtype)
             self._blockedarray = create_blockedarray( self._block_shape, self.Input.meta.dtype )
             self._block_states = self._init_block_states()
+            self._access_times = numpy.zeros( self._get_block_state_shape(), dtype=numpy.float32 )
             self._inprocess_requests = {}
 
         self.Output.meta.assignFrom(self.Input.meta)
+
+    def _getDtypeBytes(self, dtype):
+        if type(dtype) is numpy.dtype:
+            # Make sure we're dealing with a type (e.g. numpy.float64),
+            #  not a numpy.dtype
+            dtype = dtype.type
+        return dtype().nbytes
 
     def _init_block_states(self):
         # Create the block_states bookkeeping array and init with all DIRTY.
@@ -171,6 +187,9 @@ class OpCxxBlockedArrayCache( OpCache ):
                     # No one is waiting for this request data anymore, so it's safe to be removed from the 'in process' list.
                     # (This list determines which blocks can safely be discarded by the memory management thread.)
                     del self._inprocess_requests[block_state_coord]
+                    
+                    # Track most recent access, used for memory management.
+                    self._access_times[block_state_coord] = time.time()
 
         return result
 
@@ -190,7 +209,9 @@ class OpCxxBlockedArrayCache( OpCache ):
         if slot == self.Input:
             with self._lock:
                 state_roi = self._get_state_roi( (roi.start, roi.stop) )
-                self._block_states[roiToSlice(*state_roi)] = self.BlockState.DIRTY                
+                state_slicing = roiToSlice(*state_roi)
+                self._block_states[state_slicing] = self.BlockState.DIRTY
+                self._access_times[state_slicing] = 0 # Reset.
             if fixed:
                 self._dirty_while_fixed = True
             else:
@@ -202,7 +223,6 @@ class OpCxxBlockedArrayCache( OpCache ):
                 self.Output.setDirty()
             else:
                 self._dirty_while_fixed = False
-            
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.Input
@@ -213,6 +233,50 @@ class OpCxxBlockedArrayCache( OpCache ):
             self._blockedarray.writeSubarray( tuple(roi.start), tuple(roi.stop), value, self.eraser.value )
         
         self.Output.setDirty( roi )
+
+    ### Memory management members ###
+    BlockStats = collections.namedtuple( "BlockStats", ["last_access", "size_bytes", "attempt_free_fn"] )
+
+    def get_block_stats(self):
+        # None of this is protected by our lock.
+        # That's okay because The information returned here is used for heuristic purposes only.
+        # In _attempt_free_block(), we ensure that the block state hasn't changed since we provided its stats.
+        
+        BlockStats = OpCxxBlockedArrayCache.BlockStats
+        BlockState = OpCxxBlockedArrayCache.BlockState
+        input_shape = self.Input.meta.shape
+
+        with self._lock:
+            all_stored_block_starts = self._blockedarray.blocks( *roiFromShape( input_shape ) )[0]
+        state_coords = all_stored_block_starts / self._block_shape
+        states = self._block_states[ tuple(state_coords.transpose()) ]
+        coords_and_states = numpy.concatenate( (state_coords, numpy.transpose([states])), axis=1 )
+        
+        # Filter out 'in process' blocks -- those can't be freed at the moment.
+        filtered_coords_and_states = filter( lambda c: c[-1] != BlockState.IN_PROCESS, coords_and_states )
+        if not filtered_coords_and_states:
+            return []
+
+        filtered_state_coords = numpy.array( filtered_coords_and_states )[:, :-1]
+        access_times = self._access_times[ tuple(filtered_state_coords.transpose()) ]
+        
+        block_stats = []
+        for state_coord, access_time in zip( filtered_state_coords, access_times ):
+            attempt_free_fn = partial( self._attempt_free_block, state_coord * self._block_shape, access_time )
+            block_stats.append( BlockStats( access_time, self._block_size_bytes, attempt_free_fn ) )
+        return block_stats
+    
+    def _attempt_free_block(self, block_start, access_time):
+        block_start = TinyVector(block_start)
+        with self._lock:
+            state_coord = tuple( block_start / self._block_shape )
+            new_access_time = self._access_times[state_coord]
+            if new_access_time != 0 and new_access_time != access_time:
+                return False
+            self._blockedarray.deleteSubarray( block_start, block_start + self._block_shape )
+            self._access_times[state_coord] = 0
+            self._block_states[state_coord] = OpCxxBlockedArrayCache.BlockState.DIRTY
+            return True
 
 def create_blockedarray( block_shape, dtype ):
     dimension = len(block_shape)
