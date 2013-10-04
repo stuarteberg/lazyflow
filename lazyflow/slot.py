@@ -3,6 +3,7 @@ import sys
 import logging
 import itertools
 import threading
+import functools
 
 #SciPy
 import numpy
@@ -30,6 +31,9 @@ class ValueRequest(object):
     def wait(self):
         return self.result
 
+    def block(self):
+        pass
+
     def submit(self):
         pass
 
@@ -42,6 +46,27 @@ class ValueRequest(object):
     def writeInto(self, destination):
         destination[:] = self.result
         return self
+
+def is_setup_fn(func):
+    """
+    Decorator.  Marks the function as a 'setup' function, 
+    which means it affects the state of the graph connections.
+    All Slot methods that will result in any operator setupOutputs() 
+    calls should be marked as setup functions using this decorator.
+    
+    Executes the function within the context of a 
+    Graph setup operation, which tells the Graph that we are 
+    making graph setup changes by incrementing a counter for 
+    each nested setup function call. See graph.py for details.
+    """
+    @functools.wraps(func)
+    def call_in_setup_context(self, *args, **kwargs):
+        if not self.graph:
+            return func(self, *args, **kwargs)
+        with self.graph.SetupDepthContext(self.graph):
+            return func(self, *args, **kwargs)
+    call_in_setup_context.__wrapped__ = func # Emulate python 3 behavior of @wraps
+    return call_in_setup_context
 
 class Slot(object):
     """
@@ -62,8 +87,8 @@ class Slot(object):
 
     @property
     def graph(self):
-        return self.operator.graph
-
+        return (self.operator or None) and self.operator.graph
+    
     def __init__(self, name="", operator=None, stype=ArrayLike,
                  rtype=rtype.SubRegion, value=None, optional=False,
                  level=0, nonlane=False):
@@ -368,7 +393,8 @@ class Slot(object):
         if self.meta._ready:
             self.meta._ready = False
             self._sig_unready(self)
-    
+
+    @is_setup_fn
     def connect(self, partner, notify=True):
         """
         Connect a slot to another slot
@@ -488,6 +514,7 @@ class Slot(object):
             raise
             
 
+    @is_setup_fn    
     def disconnect(self):
         """
         Disconnect a InputSlot from its partner
@@ -527,6 +554,7 @@ class Slot(object):
         if oldReady:
             self._sig_unready(self)
 
+    @is_setup_fn    
     def resize(self, size):
         """
         Resizes a slot to the desired length
@@ -584,6 +612,7 @@ class Slot(object):
 
 
 
+    @is_setup_fn    
     def insertSlot(self, position, finalsize, propagate=True):
         """
         Insert a new slot at the specififed position
@@ -613,6 +642,7 @@ class Slot(object):
         self._sig_inserted(self, position, finalsize)
         return slot
 
+    @is_setup_fn    
     def removeSlot(self, position, finalsize, propagate=True):
         """
         Remove the slot at position
@@ -801,6 +831,7 @@ class Slot(object):
                         self.operator._executionCount -= 1
                         self.operator._condition.notifyAll()
 
+    @is_setup_fn    
     def setDirty(self, *args, **kwargs):
         """This method is called by a partnering OutputSlot when its
         content changes.
@@ -902,6 +933,7 @@ class Slot(object):
     def index(self, slot):
         return self._subSlots.index(slot)
 
+    @is_setup_fn    
     def setInSlot(self, slot, subindex, roi, value):
         """For now, Slots of level > 0 pretend to be operators (as far
         as their subslots are concerned). That's why they have to have
@@ -939,17 +971,19 @@ class Slot(object):
         else:
             # _value case
             return self._value
-        if isinstance(temp, numpy.ndarray) and temp.shape != (1,):
-            return temp
-        else:
-            try:
+        if isinstance(temp, numpy.ndarray):
+            if temp.shape == (1,):
                 return temp[0]
-            except IndexError:
-                self.logger.warn("FIXME: Slot.value for slot {} is {},"
-                                 " which should be wrapped in an ndarray.".format(
-                                     self.name, temp))
-                return temp
+            return temp
+        elif isinstance(temp, list):
+            return temp[0]
+        else:
+            self.logger.warn("FIXME: Slot.value for slot {} is {},"
+                             " which should be wrapped in an ndarray.".format(
+                                 self.name, temp))
+            return temp
 
+    @is_setup_fn    
     def setValue(self, value, notify=True, check_changed=True):
         """This method can be used to directly assign a value to an
         InputSlot.
@@ -1045,6 +1079,7 @@ class Slot(object):
                 raise exc_info[0], exc_info[1], exc_info[2]
             raise
 
+    @is_setup_fn    
     def setValues(self, values):
         """Set values of subslots with arraylike object. Resizes the
         multinputslot with the length of the values array
