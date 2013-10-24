@@ -63,7 +63,7 @@ def is_setup_fn(func):
     def call_in_setup_context(self, *args, **kwargs):
         if not self.graph:
             return func(self, *args, **kwargs)
-        with self.graph.SetupDepthContext(self.graph):
+        with self.graph.SetupDepthContext(self.graph, self):
             return func(self, *args, **kwargs)
     call_in_setup_context.__wrapped__ = func # Emulate python 3 behavior of @wraps
     return call_in_setup_context
@@ -1246,11 +1246,19 @@ class Slot(object):
         if self._type != "output":
             op = self.getRealOperator()
             if op is not None and not op._cleaningUp:
-                self._configureOperator(self)
+                self._markOperatorNeedsConfigure()
 
         if wasdirty:
             # call changed callbacks
             self._sig_changed(self)
+
+    def _markOperatorNeedsConfigure(self, *args):
+        if self.graph and self.operator:
+            from lazyflow.graph import Operator
+            if isinstance(self.operator, Operator):
+                self.graph.ops_to_config.add( self.operator )
+            elif isinstance(self.operator, Slot):
+                self.operator._changed()
 
     def _configureOperator(self, slot, oldSize=0, newSize=0, notify=True):
         """Call setupOutputs of Operator if all slots of the operator
@@ -1368,7 +1376,7 @@ class InputSlot(Slot):
         super(InputSlot, self).__init__(*args, **kwargs)
         self._type = "input"
         # configure operator in case of slot change
-        self.notifyResized(self._configureOperator)
+        self.notifyResized(self._markOperatorNeedsConfigure)
 
 
 class OutputSlot(Slot):

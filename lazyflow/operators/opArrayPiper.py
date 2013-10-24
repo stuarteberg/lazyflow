@@ -10,6 +10,8 @@ class OpArrayPiper(Operator):
     #Outputs
     Output = OutputSlot()
 
+    _name = ""
+
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
         self.outputs["Output"].meta.assignFrom(inputSlot.meta)
@@ -38,3 +40,8 @@ class OpArrayPiper(Operator):
         key = roi.toSlice()
         self.outputs["Output"][key] = value
     
+    @property
+    def name(self):
+        if self.parent:
+            return self.parent.name + '.' + self._name
+        return self._name
