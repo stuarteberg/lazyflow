@@ -10,9 +10,9 @@ class MetaDict(defaultdict):
     """
     def __init__(self, other=None, *args, **kwargs):
         if other is None:
-            defaultdict.__init__(self, lambda: None, **kwargs)
+            super(MetaDict, self).__init__(lambda: None, **kwargs)
         else:
-            defaultdict.__init__(self, lambda: None, other, **kwargs)
+            super(MetaDict, self).__init__(lambda: None, other, **kwargs)
 
         if not '_ready' in self:
             # flag that indicates whether all dependencies of the slot
@@ -23,6 +23,9 @@ class MetaDict(defaultdict):
         # changed since this flag was reset
         self._dirty = True
 
+    def __deepcopy__(self, memo):
+        return self.copy()
+    
     def __setattr__(self, name, value):
         """Provide convenient acces to the metadict, allows using the
         . notation instead of [] access
