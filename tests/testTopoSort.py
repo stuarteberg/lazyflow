@@ -125,9 +125,7 @@ class TestTopoSort(object):
         opA3._name = "A3"
         opA4._name = "A4"
 
-        builder = SetupDigraphBuilder()
-        builder.add_op(opA1)
-        builder.add_op(opA2)
+        builder = SetupDigraphBuilder(opA1)
         digraph = builder.digraph
         assert nx.is_directed_acyclic_graph(digraph)
 
@@ -142,9 +140,6 @@ class TestTopoSort(object):
         return digraph
 
 if __name__ == "__main__":
-#    t = TestTopoSort()
-#    t.test()
-    
     import sys
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.

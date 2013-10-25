@@ -40,8 +40,8 @@ class OpArrayPiper(Operator):
         key = roi.toSlice()
         self.outputs["Output"][key] = value
     
-    @property
-    def name(self):
-        if self.parent:
-            return self.parent.name + '.' + self._name
-        return self._name
+#    @property
+#    def name(self):
+#        if self.parent:
+#            return self.parent.name + '.' + self._name
+#        return self._name

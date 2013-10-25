@@ -65,6 +65,9 @@ class Graph(object):
         self._lock = threading.Lock()
         
         self.ops_to_config = set()
+        #self.dirty_notifications = {} # op : [notification1, notification2, ...]
+        
+        self._config_commit_points = []
 
     def call_when_setup_finished(self, fn):
         # The graph is considered in "setup" mode if any slot is executing a function that affects the state of the graph.
@@ -99,34 +102,50 @@ class Graph(object):
                 with self._graph._lock:
                     if self._graph._setup_depth == 0:
                         print "Starting new setup"
+                        if self._graph._config_commit_points:
+                            print self._graph._config_commit_points
+                        assert len(self._graph._config_commit_points) == 0
+                        self._graph._config_commit_points.append(0)
                         self._graph._sig_setup_complete = OrderedSignal()
                     self._graph._setup_depth += 1
 
         def __exit__(self, *args):
             if self._graph:
-                if self._graph._setup_depth == 1:
-                    print "Close to finishing..."
+                if self._graph._setup_depth == self._graph._config_commit_points[-1]+1:
+                    print "Committing config"
                     # The original setup_func that we triggered is complete.
                     # Now we have to configure all the operators that were affected by it,
                     #  and then we have to keep looping until all operators are configured.
                     start_op = self._slot.getRealOperator()
-                    while self._graph.ops_to_config:
+                    keep_going = len(self._graph.ops_to_config) > 0
+                    while keep_going:
                         # Recompute setup-order DAG.
                         # Unfortunately, we have to recompute the dag after every iteration because configuring an operator can cause changes to the graph.
                         dag = self._generate_setup_dag( start_op )
                         sorted_nodes = nx.topological_sort(dag)
+                        
+                        nothing_configured = True
                         for index, node in enumerate(sorted_nodes):
                             if node.type == 'output' and node.op in self._graph.ops_to_config:
+                                nothing_configured = False
                                 self._graph.ops_to_config.remove( node.op )
                                 if node.op.configured():
                                     print "Setting up {}".format( node.op.name )
+                                    self._graph._config_commit_points.append( self._graph._setup_depth )
                                     node.op._setupOutputs()
+                                    self._graph._config_commit_points.pop()
                                     print "Finished setup"
                                     #start_op = node.op
                                     sorted_nodes = sorted_nodes[index+1:]
                                     break
-                
-                    print "Finished all setup."
+                        if nothing_configured:
+                            keep_going = False
+
+                    if self._graph._setup_depth == 1:
+                        z = self._graph._config_commit_points.pop()
+                        assert z == 0
+                    print "Finished commit"
+
                 sig_setup_complete = None
                 with self._graph._lock:
                     self._graph._setup_depth -= 1
@@ -138,8 +157,7 @@ class Graph(object):
                     sig_setup_complete()
 
         def _generate_setup_dag(self, start_op):
-            builder = SetupDigraphBuilder()
-            builder.add_op( start_op )
+            builder = SetupDigraphBuilder(start_op)
             dag = builder.digraph
             #assert nx.is_directed_acyclic_graph(dag)
             return dag
@@ -149,15 +167,22 @@ class SetupDigraphBuilder(object):
     Node = collections.namedtuple("Node", ['op', 'type'])
     Node.__str__ = lambda n: n.op.name + '({})'.format( n.type )
         
-    def __init__(self):
+    def __init__(self, start_operator):
         self._digraph = nx.DiGraph()
         self._visited_ops = set()
+        
+        # We won't add any connections to the graph that fall outside of the 'scope' (the parent of the start operator).
+        # We deal only with connections within the parent operator, not any of the parent's siblings, etc.
+        self._scope_operator = start_operator.parent
+
+        # Build the dag
+        self._add_op(start_operator)
     
     @property
     def digraph(self):
         return self._digraph
     
-    def add_op(self, op):
+    def _add_op(self, op):
         """
         Add an operator to the setup digraph, along with all reachable downstream operators.
         """
@@ -178,7 +203,7 @@ class SetupDigraphBuilder(object):
 
         # Add child operators
         for child in op.children:
-            self.add_op(child)
+            self._add_op(child)
             dg.add_edge( Node(op, "input"), Node(child, "input") )
             dg.add_edge( Node(child, "output"), Node(op, "output") )
         
@@ -195,6 +220,10 @@ class SetupDigraphBuilder(object):
             for partner in slot.partners:
                 upstream_op = slot.getRealOperator()
                 downstream_op = partner.getRealOperator()
+                if downstream_op == self._scope_operator:
+                    # Don't go outside of the scope.
+                    continue
+
                 upstream_node = Node( upstream_op, slot._type )
                 downstream_node = Node( downstream_op, partner._type )
 
@@ -203,7 +232,7 @@ class SetupDigraphBuilder(object):
                 dg.add_edge( upstream_node, downstream_node )
 
                 # If this is a child op, this operator will be skipped (it's already in the digraph)
-                self.add_op(downstream_op)
+                self._add_op(downstream_op)
         else:
             for subslot in slot:
                 self._visit_partners(subslot)

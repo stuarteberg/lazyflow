@@ -421,7 +421,7 @@ class Slot(object):
                 msg = "It is forbidden to connect slots of operators that are not siblings "\
                       "or not directly related as parent and child."
                 if partner_op.parent is None or my_op.parent is None:
-                    msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
+                    msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?)"
                 raise Exception(msg)
     
             if self.partner == partner and partner.level == self.level:
