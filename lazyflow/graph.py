@@ -122,7 +122,20 @@ class Graph(object):
                         # Recompute setup-order DAG.
                         # Unfortunately, we have to recompute the dag after every iteration because configuring an operator can cause changes to the graph.
                         dag = self._generate_setup_dag( start_op )
-                        sorted_nodes = nx.topological_sort(dag)
+                        try:
+                            sorted_nodes = nx.topological_sort(dag)
+                        except nx.NetworkXUnfeasible as ex:
+                            # Somehow there is a cycle in the graph (it isn't a dag after all)
+                            # Find the cycle and re-raise
+                            # nx.cycle() apparently needs to deepcopy the graph, which doesn't work for lazyflow operators.
+                            # First, convert the dag to strings-only
+                            string_dag = nx.relabel_nodes( dag, {node : "{}({})-{}".format(node.op.name, node.type, id(node.op)) for node in dag.nodes()} )
+                            cycles = nx.simple_cycles( string_dag )
+                            for cycle_index, cycle in enumerate(cycles):
+                                print "CYCLE #{}:".format( cycle_index )
+                                for node in cycle:
+                                    print node
+                            raise
                         
                         nothing_configured = True
                         for index, node in enumerate(sorted_nodes):
