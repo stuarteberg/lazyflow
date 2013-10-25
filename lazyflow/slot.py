@@ -856,8 +856,13 @@ class Slot(object):
             # call callbacks
             self._sig_dirty(self, roi)
 
-            if self._type == "input" and self.operator.configured():
-                self.operator.propagateDirty(self, (), roi)
+            if self.graph and self._type == "input" and self.operator.configured():
+                if isinstance(self.operator, Slot):
+                    self.operator.propagateDirty(self, (), roi)
+                else:
+                    if self.operator not in self.graph.dirty_notifications:
+                        self.graph.dirty_notifications[self.operator] = []
+                    self.graph.dirty_notifications[self.operator].append( (self, (), roi) )
 
     def __iter__(self):
         assert self.level >= 1
@@ -1335,7 +1340,12 @@ class Slot(object):
 
         """
         totalIndex = (self._subSlots.index(slot),) + subindex
-        self.operator.propagateDirty(self, totalIndex, roi)
+        if isinstance(self.operator, Slot):
+            self.operator.propagateDirty(self, totalIndex, roi)
+        else:
+            if self.graph and self.operator not in self.graph.dirty_notifications:
+                self.graph.dirty_notifications[self.operator] = []
+            self.graph.dirty_notifications[self.operator].append( (self, totalIndex, roi) )
 
 
     ######################################
