@@ -17,6 +17,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     """
     
     VOLUME_MIMETYPE = "binary/imagedata"
+    STREAM_CHUNK_SIZE = 1000
     
     def do_GET(self):
         params = self.path.split('/')
@@ -38,14 +39,14 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         dataset = self.server.h5_file[dataset_path]
 
         if len(params) == 5:
-            self.do_get_info(params, dataset)
+            self._do_get_info(params, dataset)
         elif len(params) == 8:
-            self.do_get_data(params, dataset)
+            self._do_get_data(params, dataset)
         else:
             self.send_error(400, "Bad query syntax: {}".format( self.path ))
             return
 
-    def do_get_info(self, params, dataset):
+    def _do_get_info(self, params, dataset):
         assert len(params) == 5
         cmd = params[4]
         if cmd != 'info':
@@ -61,7 +62,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write( json_text )
 
-    def do_get_data(self, params, dataset):
+    def _do_get_data(self, params, dataset):
         assert len(params) == 8
         if params[0] != 'api' or \
            params[1] != 'node':
@@ -93,15 +94,14 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-length", str(len(buf)))
         self.end_headers()
 
-        self.send_buffer( buf, self.wfile )
+        self._send_buffer( buf, self.wfile )
 
-    def send_buffer(self, buf, stream):
+    def _send_buffer(self, buf, stream):
         remaining_bytes = len(buf)
         while remaining_bytes > 0:
-            next_chunk = min( remaining_bytes, 1000 )
-            next_bytes = buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk)]
-            stream.write( next_bytes )
-            remaining_bytes -= next_chunk
+            next_chunk_bytes = min( remaining_bytes, self.STREAM_CHUNK_SIZE )
+            stream.write( buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] )
+            remaining_bytes -= next_chunk_bytes
     
     @classmethod
     def get_dataset_metainfo(cls, dataset):

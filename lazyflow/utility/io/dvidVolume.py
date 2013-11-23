@@ -14,6 +14,8 @@ class DvidVolume(object):
     
     MetaInfo = collections.namedtuple('MetaInfo', 'shape dtype axistags')
     
+    STREAM_CHUNK_SIZE = 1000
+    
     @classmethod
     def parse_meta_info(cls, jsontext):
         """
@@ -63,13 +65,12 @@ class DvidVolume(object):
                               order='F' )
         buf = numpy.getbuffer(a)
         
-        # Read data from the stream in chunks (1000 bytes each)
+        # Read data from the stream in chunks
         remaining_bytes = len(buf)
         while remaining_bytes > 0:
-            next_chunk = min( remaining_bytes, 1000 )
-            read_bytes = stream.read( next_chunk )
-            buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk)] = read_bytes
-            remaining_bytes -= next_chunk
+            next_chunk_bytes = min( remaining_bytes, self.STREAM_CHUNK_SIZE )
+            buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk_bytes)] = stream.read( next_chunk_bytes )
+            remaining_bytes -= next_chunk_bytes
         return a
 
     def __init__(self, hostname, uuid, dataset_name):
@@ -139,6 +140,7 @@ if __name__ == "__main__":
 
     filename = "/Users/bergs/Documents/workspace/ilastik-meta/lazyflow/tests/dvid_mockup/gigacube.h5"
     test_volume( "localhost:8000", filename, "volume", "data", (0,0,5,0,0), (1,100,20,10,1) )
+    print "TEST COMPLETE"
 
     def test_metainfo_parsing():
             meta_string = """
