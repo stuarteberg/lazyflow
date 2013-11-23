@@ -54,7 +54,10 @@ class DvidVolume(object):
 
         return DvidVolume.MetaInfo( tuple(shape), dtypes[0], tags )
 
-    def decode_to_vigra_array(self, stream, metainfo, roi_shape):        
+    def decode_to_vigra_array(self, stream, metainfo, roi_shape):
+        """
+        Decode the info in the given stream to a vigra.VigraArray.
+        """
         # Vigra is finicky about the integer types we give it in the shape field
         roi_shape = tuple( map(int, roi_shape) )
         
@@ -123,16 +126,23 @@ class DvidVolume(object):
 
 if __name__ == "__main__":
     import h5py
-    def test_volume(hostname, filename, group, dataset, start, stop):
+    def test_volume(hostname, h5filename, h5group, h5dataset, start, stop):
+        """
+        hostname: The dvid server host
+        h5filename: The h5 file to compare against
+        h5group: The hdf5 group, also used as the uuid of the dvid dataset
+        h5dataset: The dataset name, also used as the name of the dvid dataset
+        start, stop: The bounds of the cutout volume to retrieve from the server. FORTRAN ORDER.
+        """
         # Retrieve from server
-        dvid_vol = DvidVolume( hostname, group, dataset )
+        dvid_vol = DvidVolume( hostname, uuid=h5group, dataset_name=h5dataset )
         subvol = dvid_vol.retrieve_subvolume( start, stop )
 
         # Retrieve from file
         slicing = [ slice(x,y) for x,y in zip(start, stop) ]
         slicing = tuple(reversed(slicing))
-        with h5py.File(filename, 'r') as f:
-            expected_data = f[group][dataset][slicing]
+        with h5py.File(h5filename, 'r') as f:
+            expected_data = f[h5group][h5dataset][slicing]
 
         # Compare.
         assert ( subvol.view(numpy.ndarray) == expected_data.transpose() ).all(),\
