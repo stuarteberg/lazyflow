@@ -31,7 +31,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
 
         dataset_path = uuid + '/' + data_name
         if dataset_path not in self.server.h5_file:
-            self.send_error(404, "Couldn't find dataset: {}".format( dataset_path ))
+            self.send_error(404, "Couldn't find dataset: {} in file {}".format( dataset_path, self.server.h5_file.filename ))
             return
 
         # For this mock server, we assume the data can be found inside our file at /uuid/data_name
@@ -55,9 +55,10 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         metainfo = self.get_dataset_metainfo(dataset)
         json_text = self.get_dataset_metainfo_json(metainfo)
 
+        self.send_response(200)
         self.send_header("Content-type", "text/json")
         self.send_header("Content-length", str(len(json_text)))
-        self.end_headers()        
+        self.end_headers()
         self.wfile.write( json_text )
 
     def do_get_data(self, params, dataset):
@@ -81,27 +82,31 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )        
         slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
         
-        self.send_header("Content-type", self.VOLUME_MIMETYPE)
-        self.end_headers()
-
         # Reverse here because API uses fortran order, but data is stored in C-order
         data = dataset[tuple(reversed(slicing))]
         axistags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
         v_array = vigra.taggedView( data, axistags )
-        self.encode_from_vigra_array( v_array, self.wfile )
-
-    def encode_from_vigra_array(self, v_array, stream):
         buf = numpy.getbuffer(v_array)
+
+        self.send_response(200)
+        self.send_header("Content-type", self.VOLUME_MIMETYPE)
+        self.send_header("Content-length", str(len(buf)))
+        self.end_headers()
+
+        self.send_buffer( buf, self.wfile )
+
+    def send_buffer(self, buf, stream):
         remaining_bytes = len(buf)
         while remaining_bytes > 0:
             next_chunk = min( remaining_bytes, 1000 )
-            stream.write( buf[-remaining_bytes:-(remaining_bytes-next_chunk)] )
+            next_bytes = buf[len(buf)-remaining_bytes:len(buf)-(remaining_bytes-next_chunk)]
+            stream.write( next_bytes )
             remaining_bytes -= next_chunk
     
     @classmethod
     def get_dataset_metainfo(cls, dataset):
         shape = dataset.shape
-        dtype = dataset.dtype
+        dtype = dataset.dtype.type
         # Tricky business here:
         # The dataset is stored as a C-order-array, but DVID wants fortran order.
         c_tags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
@@ -123,7 +128,7 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
             metadict["axes"].append( axisdict )
         metadict["values"] = []
         
-        num_channels = metadict.shape[ metainfo.axistags.channelIndex ]
+        num_channels = metainfo.shape[ metainfo.axistags.channelIndex ]
         for _ in range( num_channels ):
             metadict["values"].append( { "type" : metainfo.dtype.__name__,
                                          "label" : "" } ) # FIXME: No label for now.
@@ -136,13 +141,20 @@ class H5Server(HTTPServer):
         self.h5filepath = h5filepath
     
     def serve_forever(self):
-        with h5py.File( self.h5filepath ) as h5_file:
+        with h5py.File( self.h5filepath, 'r' ) as h5_file: # FIXME: Read-only for now (we don't yet support PUT)
             self.h5_file = h5_file
             HTTPServer.serve_forever(self)
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) != 2:
+        sys.stderr.write("Usage: python {} <filename.h5>\n".format( sys.argv[0] ))
+        sys.exit(1)
+    
+    filename = sys.argv[1]
+    
     server_address = ('', 8000)
-    server = H5Server( 'test.h5', server_address, H5CutoutRequestHandler )
+    server = H5Server( filename, server_address, H5CutoutRequestHandler )
     server.serve_forever()
 
     print "DONE!"
