@@ -1,6 +1,8 @@
+import json
+import numpy
 import h5py
+import vigra
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-
 from lazyflow.utility.io.dvidVolume import DvidVolume
 
 class H5CutoutRequestHandler(BaseHTTPRequestHandler):
@@ -13,33 +15,73 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
     Cutout volume:
         GET  /api/node/<UUID>/<data name>/<dims>/<size>/<offset>[/<format>]
     """
+    
+    VOLUME_MIMETYPE = "binary/imagedata"
+    
     def do_GET(self):
         params = self.path.split('/')
         if params[0] == '':
             params = params[1:]
-        
-        if len(params) != 8 or \
-           params[0] != 'api' or \
-           params[1] != 'node':
+
+        if len(params) < 5:
             self.send_error(400, "Bad query syntax: {}".format( self.path ))
             return
-        
-        uuid, data_name, dims_str, roi_shape_str, roi_start_str, format = params[2:]
-        
-        # For this mock server, we assume the data can be found inside our file at /uuid/data_name
+
+        uuid, data_name = params[2:4]
+
         dataset_path = uuid + '/' + data_name
         if dataset_path not in self.server.h5_file:
             self.send_error(404, "Couldn't find dataset: {}".format( dataset_path ))
             return
 
+        # For this mock server, we assume the data can be found inside our file at /uuid/data_name
         dataset = self.server.h5_file[dataset_path]
+
+        if len(params) == 5:
+            self.do_get_info(params, dataset)
+        elif len(params) == 8:
+            self.do_get_data(params, dataset)
+        else:
+            self.send_error(400, "Bad query syntax: {}".format( self.path ))
+            return
+
+    def do_get_info(self, params, dataset):
+        assert len(params) == 5
+        cmd = params[4]
+        if cmd != 'info':
+            self.send_error(400, "Bad query syntax: {}".format( self.path ))
+            return
+        
+        metainfo = self.get_dataset_metainfo(dataset)
+        json_text = self.get_dataset_metainfo_json(metainfo)
+
+        self.send_header("Content-type", "text/json")
+        self.send_header("Content-length", str(len(json_text)))
+        self.end_headers()        
+        self.wfile.write( json_text )
+
+    def do_get_data(self, params, dataset):
+        assert len(params) == 8
+        if params[0] != 'api' or \
+           params[1] != 'node':
+            self.send_error(400, "Bad query syntax: {}".format( self.path ))
+            return
+        
+        dims_str, roi_shape_str, roi_start_str, fmt = params[4:]
+
+        dataset_ndims = len(dataset.shape)
+        expected_dims_str = "_".join( map(str, range( dataset_ndims-1 )) )
+        if dims_str != expected_dims_str:
+            self.send_error(400, "For now, queries must include all dataset axes.  Your query requested dims: {}".format( dims_str ))
+            return
+        
         roi_start = tuple( int(x) for x in roi_start_str.split('_') )
         roi_shape = tuple( int(x) for x in roi_shape_str.split('_') )
         
         roi_stop = tuple( numpy.array(roi_start) + roi_shape )        
         slicing = tuple( slice(x,y) for x,y in zip(roi_start, roi_stop) )
         
-        self.send_header("Content-type", "binary/imagedata")
+        self.send_header("Content-type", self.VOLUME_MIMETYPE)
         self.end_headers()
 
         # Reverse here because API uses fortran order, but data is stored in C-order
@@ -65,6 +107,28 @@ class H5CutoutRequestHandler(BaseHTTPRequestHandler):
         c_tags = vigra.AxisTags.fromJSON( dataset.attrs['axistags'] )
         f_tags = vigra.AxisTags( list(reversed(c_tags)) )
         return DvidVolume.MetaInfo( shape, dtype, f_tags )
+
+    @classmethod
+    def get_dataset_metainfo_json(cls, metainfo):
+        metadict = {}
+        metadict["axes"] = []
+        for tag, size in zip(metainfo.axistags, metainfo.shape):
+            if tag.key == "c":
+                continue
+            axisdict = {}
+            axisdict["label"] = tag.key.upper()
+            axisdict["resolution"] = tag.resolution
+            axisdict["units"] = "nanometers" # FIXME: Hardcoded for now
+            axisdict["size"] = size
+            metadict["axes"].append( axisdict )
+        metadict["values"] = []
+        
+        num_channels = metadict.shape[ metainfo.axistags.channelIndex ]
+        for _ in range( num_channels ):
+            metadict["values"].append( { "type" : metainfo.dtype.__name__,
+                                         "label" : "" } ) # FIXME: No label for now.
+        return json.dumps( metadict )
+
 
 class H5Server(HTTPServer):
     def __init__(self, h5filepath, *args, **kwargs):
