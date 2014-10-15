@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import numpy
+import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock, Request, RequestPool
@@ -190,31 +191,45 @@ class OpFeatureMatrixCache(Operator):
     def _extract_feature_matrix(self, label_block_roi):
         num_feature_channels = self.FeatureImage.meta.shape[-1]
         labels = self.LabelImage(label_block_roi[0], label_block_roi[1]).wait()
-        label_block_positions = numpy.nonzero(labels[...,0].view(numpy.ndarray))
-        labels_matrix = labels[label_block_positions].astype(numpy.float).view(numpy.ndarray)
+        
+        # TRANSPOSE TO STANDARD AXIS ORDER
+        labels_view = vigra.taggedView( labels, self.LabelImage.meta.axistags )
+        labels_view = labels_view.withAxes( *'tzyxc' )
+        
+        label_block_positions = numpy.nonzero(labels_view[...,0].view(numpy.ndarray))
+        labels_matrix = labels_view[label_block_positions].astype(numpy.float).view(numpy.ndarray)
         
         if len(label_block_positions) == 0 or len(label_block_positions[0]) == 0:
             # No label points in this roi.
             # Return an empty label&feature matrix (of the correct shape)
             return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
 
-        # Shrink the roi to the bounding box of nonzero labels
-        block_bounding_box_start = numpy.array( map( numpy.min, label_block_positions ) )
-        block_bounding_box_stop = 1 + numpy.array( map( numpy.max, label_block_positions ) )
-        
-        global_bounding_box_start = block_bounding_box_start + label_block_roi[0][:-1]
-        global_bounding_box_stop  = block_bounding_box_stop + label_block_roi[0][:-1]
+        for t in numpy.unique( label_block_positions[0] ):
+            slice_view = labels_view[t:t+1].withAxes( *self.LabelImage.meta.getAxisOrder() )
+            
+            label_slice_positions = numpy.nonzero(slice_view[...,0].view(numpy.ndarray))
 
-        # Since we're just requesting the bounding box, offset the feature positions by the box start
-        bounding_box_positions = numpy.transpose( numpy.transpose(label_block_positions) - numpy.array(block_bounding_box_start) )
-        bounding_box_positions = tuple(bounding_box_positions)
-
-        # Append channel roi (all feature channels)
-        feature_roi_start = list(global_bounding_box_start) + [0]
-        feature_roi_stop = list(global_bounding_box_stop) + [num_feature_channels]
+            # Shrink the roi to the bounding box of nonzero labels
+            block_bounding_box_start = numpy.array( map( numpy.min, label_slice_positions) )
+            block_bounding_box_stop = 1 + numpy.array( map( numpy.max, label_slice_positions ) )
+            
+            global_bounding_box_start = block_bounding_box_start + label_block_roi[0][:-1]
+            global_bounding_box_stop  = block_bounding_box_stop + label_block_roi[0][:-1]
+    
+            # Since we're just requesting the bounding box, offset the feature positions by the box start
+            bounding_box_positions = numpy.transpose( numpy.transpose(label_block_positions) - numpy.array(block_bounding_box_start) )
+            bounding_box_positions = tuple(bounding_box_positions)
+    
+            # Append channel roi (all feature channels)
+            feature_roi_start = list(global_bounding_box_start) + [0]
+            feature_roi_stop = list(global_bounding_box_stop) + [num_feature_channels]
 
         # Request features (bounding box only)
-        features = self.FeatureImage(feature_roi_start, feature_roi_stop).wait()
+        logger.info("Extracting features for label block: {} from roi {}".format( label_block_roi, (feature_roi_start, feature_roi_stop) ))
+        try:
+            features = self.FeatureImage(feature_roi_start, feature_roi_stop).wait()
+        except:
+            raise
 
         # Cast as plain ndarray (not VigraArray), since we don't need/want axistags
         features_matrix = features[bounding_box_positions].view(numpy.ndarray)
