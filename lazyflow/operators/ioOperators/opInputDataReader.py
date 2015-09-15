@@ -93,6 +93,7 @@ class OpInputDataReader(Operator):
         super(OpInputDataReader, self).cleanUp()
         if self._file is not None:
             self._file.close()
+            print "Closed my file in cleanUp()"
             self._file = None
 
     def setupOutputs(self):
@@ -124,6 +125,7 @@ class OpInputDataReader(Operator):
             self.internalOutput = None
         if self._file is not None:
             self._file.close()
+            print "Closed ", self.FilePath.value
 
         openFuncs = [ self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsTiffStack,
@@ -212,6 +214,7 @@ class OpInputDataReader(Operator):
         # Open the h5 file in read-only mode
         try:
             h5File = h5py.File(externalPath, 'r')
+            print "Opened ", externalPath
         except OpInputDataReader.DatasetReadError:
             raise
         except Exception as e:
@@ -223,11 +226,13 @@ class OpInputDataReader(Operator):
                 if len(possible_internal_paths) == 1:
                     internalPath = possible_internal_paths[0]
                 elif len(possible_internal_paths) == 0:
-                    h5File.close() 
+                    h5File.close()
+                    print "Closed ", externalPath
                     msg = "HDF5 file contains no datasets: {}".format( externalPath )
                     raise OpInputDataReader.DatasetReadError( msg )
                 else:
                     h5File.close() 
+                    print "Closed ", externalPath
                     msg = "When using hdf5, you must append the hdf5 internal path to the "\
                           "data set to your filename, e.g. myfile.h5/volume/data  "\
                           "No internal path provided for dataset in file: {}".format( externalPath )
@@ -237,6 +242,7 @@ class OpInputDataReader(Operator):
                 compression_setting = h5File[internalPath].compression
             except Exception as e:
                 h5File.close()
+                print "Closed ", externalPath
                 msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
                 raise OpInputDataReader.DatasetReadError( msg )
  
@@ -246,6 +252,7 @@ class OpInputDataReader(Operator):
             allow_multiprocess_hdf5 = "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ["LAZYFLOW_MULTIPROCESS_HDF5"] != ""
             if compression_setting is not None and allow_multiprocess_hdf5:
                 h5File.close()                
+                print "Closed ", externalPath
                 h5File = MultiProcessHdf5File(externalPath, 'r')
 
         self._file = h5File

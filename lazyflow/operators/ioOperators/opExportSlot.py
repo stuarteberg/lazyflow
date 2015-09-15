@@ -226,6 +226,7 @@ class OpExportSlot(Operator):
             if ex.errno != 2:
                 raise
         try:
+            print "Opening {} for writing".format(export_components.externalPath)
             with h5py.File(export_components.externalPath, 'w') as hdf5File:
                 # Create a temporary operator to do the work for us
                 opH5Writer = OpH5WriterBigDataset(parent=self)
@@ -242,6 +243,7 @@ class OpExportSlot(Operator):
                 finally:
                     opH5Writer.cleanUp()
                     self.progressSignal(100)
+            print "Closed {} after writing".format(export_components.externalPath)
         except IOError as ex:
             import sys
             msg = "\nException raised when attempting to export to {}: {}\n"\
