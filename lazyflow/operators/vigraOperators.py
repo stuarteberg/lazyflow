@@ -540,7 +540,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                             tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
                             
                             if self.supportFastFilters.value:
-                                vsa  = numpy.ascontiguousarray(vsa)
+                                vsa  = vigra.taggedView( numpy.ascontiguousarray(vsa), vsa.axistags )
                                 buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
                                 
                                 if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
@@ -580,7 +580,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                         
                         if self.supportFastFilters.value:
-                            sourceArrayV  = numpy.ascontiguousarray(sourceArrayV)
+                            sourceArrayV = vigra.taggedView( numpy.ascontiguousarray(sourceArrayV), sourceArrayV.axistags )
                             buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )
                             
                             if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
@@ -1556,7 +1556,7 @@ class OpDifferenceOfGaussiansFF(OpBaseVigraFilter):
     name = "DifferenceOfGaussiansFF"
     
     def differenceOfGausssiansFF(image, sigma0, sigma1, window_size):
-        image = numpy.ascontiguousarray(image)
+        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
         return (fastfilters.gaussianSmoothing(image, sigma0, window_size) - fastfilters.gaussianSmoothing(image, sigma1, window_size) )
     
     vigraFilter = staticmethod(differenceOfGausssiansFF)
