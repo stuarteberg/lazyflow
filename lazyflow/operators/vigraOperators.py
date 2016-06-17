@@ -124,7 +124,7 @@ class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
     category = "Vigra filter"
 
-    supportFastFilters = InputSlot(value=False)
+    supportFastFilters = InputSlot(value=True)
 
     inputSlots = [InputSlot("Input"),
                   InputSlot("Matrix"),
@@ -545,6 +545,19 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 droi = roiToSlice(*droi)
                                 logger.info("1Presmoothing sigma: {}, roi: {}".format(tempSigma, droi))
                                 sourceArraysForSigmas[j][tmp_key] = buffer[droi]
+                                
+                                if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:                        
+                                    import h5py
+                                    
+                                    logger.info('Saving debugging in and out files.')
+                                    fin = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_in.h5','w')
+                                    fin['data'] = vsa
+                                    fin.close()
+           
+                                    fout = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_out.h5','w')
+                                    fout['data'] = buffer
+                                    fout.close()
+                            
                             else:
                                 sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = self.WINDOW_SIZE )
 
@@ -557,6 +570,18 @@ class OpPixelFeaturesPresmoothed(Operator):
                             droi = roiToSlice(*droi)
                             logger.info("1Presmoothing sigma: {}, roi: {}".format(tempSigma, droi))
                             sourceArraysForSigmas[j] = buffer[droi]
+                            
+                            if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:                        
+                                import h5py
+                                
+                                logger.info('Saving debugging in and out files.')
+                                fin = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_in.h5','w')
+                                fin['data'] = sourceArrayV
+                                fin.close()
+       
+                                fout = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_out.h5','w')
+                                fout['data'] = buffer
+                                fout.close()
                         else:
                             sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = self.WINDOW_SIZE)
                         
