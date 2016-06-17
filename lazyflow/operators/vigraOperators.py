@@ -542,21 +542,36 @@ class OpPixelFeaturesPresmoothed(Operator):
                             if self.supportFastFilters.value:
                                 vsa  = numpy.ascontiguousarray(vsa)
                                 buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                
+                                if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                    logger.info("Recomputing")
+                                    buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                    logger.info("Recomputing1")
+                                    buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                    logger.info("Recomputing2")
+                                    buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                    logger.info("Recomputing3")
+                                    buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                    
+                      
                                 droi = roiToSlice(*droi)
-                                logger.info("1Presmoothing sigma: {}, roi: {}".format(tempSigma, droi))
+                                logger.info("1Presmoothing sigma: {}, roi: {}, max: {}, min: {}".format(tempSigma, droi, buffer.max(), buffer.min() ))
                                 sourceArraysForSigmas[j][tmp_key] = buffer[droi]
                                 
-                                if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:                        
-                                    import h5py
-                                    
-                                    logger.info('Saving debugging in and out files.')
-                                    fin = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_in.h5','w')
-                                    fin['data'] = vsa
-                                    fin.close()
-           
-                                    fout = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_out.h5','w')
-                                    fout['data'] = buffer
-                                    fout.close()
+#                                 if abs(vsa.min()) > 1000 or abs(vsa.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:                        
+#                                     import h5py
+#                                     
+#                                     logger.info('Saving debugging in and out files for roi: {}'.format(droi))
+#                                     fin = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_in_{}.h5'.format(tempSigma),'w')
+#                                     fin['data'] = vsa
+#                                     fin.close()
+#            
+#                                     fout = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_out_{}.h5'.format(tempSigma),'w')
+#                                     fout['data'] = buffer
+#                                     fout.close()
                             
                             else:
                                 sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = self.WINDOW_SIZE )
@@ -567,21 +582,36 @@ class OpPixelFeaturesPresmoothed(Operator):
                         if self.supportFastFilters.value:
                             sourceArrayV  = numpy.ascontiguousarray(sourceArrayV)
                             buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )
-                            droi = roiToSlice(*droi)
-                            logger.info("1Presmoothing sigma: {}, roi: {}".format(tempSigma, droi))
-                            sourceArraysForSigmas[j] = buffer[droi]
                             
-                            if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:                        
-                                import h5py
+                            if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                logger.info("Recomputing")
+                                buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )
+                            if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                logger.info("Recomputing1")
+                                buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )
+                            if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                logger.info("Recomputing2")
+                                buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )
+                            if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:
+                                logger.info("Recomputing3")
+                                buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )
+
+                                                                
+                            droi = roiToSlice(*droi)
+                            logger.info("1Presmoothing sigma: {}, roi: {}, max: {}, min: {}".format(tempSigma, droi, buffer.max(), buffer.min() ))
+                            sourceArraysForSigmas[j] = buffer[droi]    
                                 
-                                logger.info('Saving debugging in and out files.')
-                                fin = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_in.h5','w')
-                                fin['data'] = sourceArrayV
-                                fin.close()
-       
-                                fout = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_out.h5','w')
-                                fout['data'] = buffer
-                                fout.close()
+#                             if abs(sourceArrayV.min()) > 1000 or abs(sourceArrayV.max()) > 1000 or abs(buffer.min()) > 1000 or abs(buffer.max()) > 1000:                        
+#                                 import h5py
+#                                 
+#                                 logger.info('Saving debugging in and out files.')
+#                                 fin = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_in_{}.h5'.format(tempSigma),'w')
+#                                 fin['data'] = sourceArrayV
+#                                 fin.close()
+#                                 
+#                                 fout = h5py.File('/groups/branson/home/cervantesj/Desktop/presmooth_out_{}.h5'.format(tempSigma),'w')
+#                                 fout['data'] = buffer
+#                                 fout.close()
                         else:
                             sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = self.WINDOW_SIZE)
                         
@@ -1416,21 +1446,21 @@ class OpBaseVigraFilter(OpArrayPiper):
 
                     try:
                         vres[:] = temp[twriteKey]
-                        if abs(image.min()) > 1000 or abs(image.max()) > 1000 or abs(vres.min()) > 1000 or abs(vres.max()) > 1000:                        
-                        #if abs(vres.min()) > 1000 or abs(vres.max()) > 1000:
-                            import h5py
-                            
-                            logger.info('Saving debugging in and out files.')
-                            fin = h5py.File('/groups/branson/home/cervantesj/Desktop/testin2.h5','w')
-                            fin['data'] = image
-                            fin.close()
-   
-                            fout = h5py.File('/groups/branson/home/cervantesj/Desktop/testout2.h5','w')
-                            fout['data'] = vres
-                            fout.close()
-                            
-                            
-                        logger.info("name: {}, Roi: {}, Min: {}, Max: {}".format(self.name, twriteKey, vres.min(), vres.max()))
+#                         if abs(image.min()) > 1000 or abs(image.max()) > 1000 or abs(vres.min()) > 1000 or abs(vres.max()) > 1000:                        
+#                         #if abs(vres.min()) > 1000 or abs(vres.max()) > 1000:
+#                             import h5py
+#                             
+#                             logger.info('Saving debugging in and out files.')
+#                             fin = h5py.File('/groups/branson/home/cervantesj/Desktop/testin2.h5','w')
+#                             fin['data'] = image
+#                             fin.close()
+#    
+#                             fout = h5py.File('/groups/branson/home/cervantesj/Desktop/testout2.h5','w')
+#                             fout['data'] = vres
+#                             fout.close()
+#                             
+#                             
+#                         logger.info("name: {}, Roi: {}, Min: {}, Max: {}".format(self.name, twriteKey, vres.min(), vres.max()))
                     except:
                         logger.error( "EXCEPT3 {} {} {}".format( vres.shape, temp.shape, twriteKey ) )
                         logger.error( "EXCEPT3 {} {} {}".format( resultArea.shape,  tresKey, twriteKey ) )
